@@ -1,6 +1,6 @@
 /* ──────────────────────────────────────────────────────────────
    RW x GEMS OtoColor — script.js
-   Single-screen interaction: Creepy Button + Integrated Demo
+   Ultra-responsive: Mouse + Touch slider, Demo engine, Eye tracking
    ────────────────────────────────────────────────────────────── */
 
 'use strict';
@@ -8,24 +8,22 @@
 document.addEventListener('DOMContentLoaded', () => {
 
   /* ─── EYE TRACKING (CREEPY BUTTON) ─── */
-  
+
   function getPupilOffset(eye, cursorX, cursorY) {
     const rect = eye.getBoundingClientRect();
     const eyeCX = rect.left + rect.width / 2;
     const eyeCY = rect.top  + rect.height / 2;
-
     const dx = cursorX - eyeCX;
     const dy = cursorY - eyeCY;
     const dist = Math.hypot(dx, dy);
-    const maxRadius = 4; // px
-
+    const maxRadius = 4;
     if (dist === 0) return { x: 0, y: 0 };
     const clampedDist = Math.min(dist, maxRadius);
     return { x: (dx / dist) * clampedDist, y: (dy / dist) * clampedDist };
   }
 
   window.updateEyes = (event, btn) => {
-    const eyes = btn.querySelectorAll('.eye');
+    const eyes   = btn.querySelectorAll('.eye');
     const pupils = btn.querySelectorAll('.pupil');
     eyes.forEach((eye, i) => {
       const { x, y } = getPupilOffset(eye, event.clientX, event.clientY);
@@ -44,9 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
 
-
-
-
   /* ─── INTEGRATED DEMO ENGINE ─── */
 
   const DEMO_STEPS = [
@@ -59,13 +54,13 @@ document.addEventListener('DOMContentLoaded', () => {
     'Étape 7/7 — ✓ Séquence prête pour export!'
   ];
 
-  const startDemoBtn = document.getElementById('start-demo');
-  const statusText = document.getElementById('demo-status-text');
-  const progressFill = document.getElementById('demo-progress-fill');
-  const progressPct = document.getElementById('demo-pct');
-  const scanLine = document.getElementById('scan-line');
-  
-  // Character Parts
+  const startDemoBtn   = document.getElementById('start-demo');
+  const statusText     = document.getElementById('demo-status-text');
+  const progressFill   = document.getElementById('demo-progress-fill');
+  const progressPct    = document.getElementById('demo-pct');
+  const progressWrap   = document.getElementById('demo-progress-wrap');
+  const scanLine       = document.getElementById('scan-line');
+
   const parts = {
     body: document.getElementById('char-body'),
     vest: document.getElementById('char-vest'),
@@ -74,18 +69,25 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   let isDemoRunning = false;
+  let autoRestartTimer = null;
+
+  function updateProgress(value) {
+    if (progressFill) progressFill.style.width = `${value}%`;
+    if (progressPct) progressPct.textContent = `${value}%`;
+    if (progressWrap) progressWrap.setAttribute('aria-valuenow', value);
+  }
 
   function resetDemo() {
-    progressFill.style.width = '0%';
-    progressPct.textContent = '0%';
-    scanLine.style.display = 'block';
-    statusText.textContent = 'Mode Local : En attente...';
-    
+    updateProgress(0);
+    if (scanLine) scanLine.style.display = 'block';
+    if (statusText) statusText.textContent = 'Mode Local : En attente...';
+
     Object.values(parts).forEach(p => {
       if (p) {
-        p.style.fill = 'transparent';
+        p.style.fill   = 'transparent';
         p.style.stroke = 'white';
         p.style.filter = 'none';
+        p.style.transition = '';
       }
     });
   }
@@ -93,64 +95,76 @@ document.addEventListener('DOMContentLoaded', () => {
   function runColorDemo(isAuto = false) {
     if (isDemoRunning) return;
     isDemoRunning = true;
-    
+    if (autoRestartTimer) { clearTimeout(autoRestartTimer); autoRestartTimer = null; }
+
     if (startDemoBtn) {
       startDemoBtn.disabled = true;
-      startDemoBtn.textContent = 'IA en cours...';
+      startDemoBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+        </svg>
+        IA en cours...`;
     }
 
     resetDemo();
 
     let step = 0;
     const totalSteps = DEMO_STEPS.length;
-    
+
+    // Enable smooth transitions for character parts
+    Object.values(parts).forEach(p => {
+      if (p) p.style.transition = 'fill 0.6s ease, stroke 0.6s ease, filter 0.6s ease';
+    });
+
     const runStep = () => {
       if (step >= totalSteps) {
-        statusText.textContent = '✓ Colorisation prête !';
+        if (statusText) statusText.textContent = '✓ Colorisation prête !';
         if (startDemoBtn) {
-          startDemoBtn.textContent = 'Relancer la démo';
           startDemoBtn.disabled = false;
+          startDemoBtn.innerHTML = `
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            Relancer la démo`;
         }
-        scanLine.style.display = 'none';
+        if (scanLine) scanLine.style.display = 'none';
         isDemoRunning = false;
 
-        // If auto, wait 5s and restart
         if (isAuto) {
-          setTimeout(() => runColorDemo(true), 5000);
+          autoRestartTimer = setTimeout(() => runColorDemo(true), 5000);
         }
         return;
       }
 
-      statusText.textContent = DEMO_STEPS[step];
+      if (statusText) statusText.textContent = DEMO_STEPS[step];
       const progressValue = Math.round(((step + 1) / totalSteps) * 100);
-      progressFill.style.width = `${progressValue}%`;
-      progressPct.textContent = `${progressValue}%`;
+      updateProgress(progressValue);
 
-      // Trigger visual colorization at specific steps
-      if (step === 1) { // Segmenter
-        if (parts.body) parts.body.style.stroke = 'var(--color-primary)';
-      }
-      if (step === 2) { // Veste
-        if (parts.vest) {
-           parts.vest.style.fill = 'var(--color-primary)';
-           parts.vest.style.stroke = 'var(--color-primary)';
-        }
-      }
-      if (step === 3) { // Peau
-        if (parts.head) {
-           parts.head.style.fill = 'var(--color-emerald)';
-           parts.head.style.stroke = 'var(--color-emerald)';
-        }
-      }
-      if (step === 4) { // Pantalon
-        if (parts.legs) {
-           parts.legs.style.stroke = 'var(--color-amber)';
-        }
-      }
-      if (step === 6) { // Final Glow
-        Object.values(parts).forEach(p => {
-          if (p) p.style.filter = 'drop-shadow(0 0 4px rgba(255,255,255,0.2))';
-        });
+      // Progressive visual colorization
+      switch (step) {
+        case 1:
+          if (parts.body) parts.body.style.stroke = 'var(--color-primary)';
+          break;
+        case 2:
+          if (parts.vest) {
+            parts.vest.style.fill   = 'var(--color-primary)';
+            parts.vest.style.stroke = 'var(--color-primary)';
+          }
+          break;
+        case 3:
+          if (parts.head) {
+            parts.head.style.fill   = 'var(--color-emerald)';
+            parts.head.style.stroke = 'var(--color-emerald)';
+          }
+          break;
+        case 4:
+          if (parts.legs) parts.legs.style.stroke = 'var(--color-amber)';
+          break;
+        case 6:
+          Object.values(parts).forEach(p => {
+            if (p) p.style.filter = 'drop-shadow(0 0 4px rgba(255,255,255,0.2))';
+          });
+          break;
       }
 
       step++;
@@ -164,50 +178,80 @@ document.addEventListener('DOMContentLoaded', () => {
     startDemoBtn.addEventListener('click', () => runColorDemo(false));
   }
 
-  // Initial auto-start after a short delay
-  setTimeout(() => runColorDemo(true), 2000);
+  // Initial auto-start after short delay
+  setTimeout(() => runColorDemo(true), 1800);
 
 
-  /* ─── BACKGROUND & TITLE COMPARISON TRACKING ─── */
+  /* ─── BACKGROUND & PANEL COMPARISON — Mouse + Touch ─── */
+
   const bgComparison = document.getElementById('bgComparison');
-  const logoWrapper = document.getElementById('logoWrapper');
-  const logoBlack = logoWrapper ? logoWrapper.querySelector('.text-black') : null;
+  const logoWrapper  = document.getElementById('logoWrapper');
+  const logoBlack    = logoWrapper ? logoWrapper.querySelector('.text-black') : null;
   const heroTextPanel = document.getElementById('heroTextPanel');
-  const panelPaper = document.getElementById('panelPaper');
+  const panelPaper   = document.getElementById('panelPaper');
+
+  // Reduced motion check
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function updateVisuals(clientX) {
     const screenWidth = window.innerWidth;
     const xPct = (clientX / screenWidth) * 100;
-    
-    // Update background slider
+
+    // Background slider
     if (bgComparison) {
       bgComparison.style.setProperty('--slider-pos', `${xPct}%`);
     }
 
-    // Update Logo Reveal Sync (Black revealed from SLIDER to RIGHT)
+    // Logo text reveal (black text revealed on the RIGHT of the divider)
     if (logoWrapper && logoBlack) {
-        const rect = logoWrapper.getBoundingClientRect();
-        const localX = ((clientX - rect.left) / rect.width) * 100;
-        const clampedX = Math.max(0, Math.min(100, localX));
-        logoBlack.style.clipPath = `polygon(${clampedX}% 0, 100% 0, 100% 100%, ${clampedX}% 100%)`;
+      const rect = logoWrapper.getBoundingClientRect();
+      const localX = ((clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.max(0, Math.min(100, localX));
+      logoBlack.style.clipPath = `polygon(${clamped}% 0, 100% 0, 100% 100%, ${clamped}% 100%)`;
     }
 
-    // Update Global Panel Reveal Sync (Paper revealed from SLIDER to RIGHT)
+    // Panel paper reveal (paper layer revealed on the RIGHT of the divider)
     if (heroTextPanel && panelPaper) {
-        const rect = heroTextPanel.getBoundingClientRect();
-        const localX = ((clientX - rect.left) / rect.width) * 100;
-        const clampedX = Math.max(0, Math.min(100, localX));
-        panelPaper.style.clipPath = `polygon(${clampedX}% 0, 100% 0, 100% 100%, ${clampedX}% 100%)`;
+      const rect = heroTextPanel.getBoundingClientRect();
+      const localX = ((clientX - rect.left) / rect.width) * 100;
+      const clamped = Math.max(0, Math.min(100, localX));
+      panelPaper.style.clipPath = `polygon(${clamped}% 0, 100% 0, 100% 100%, ${clamped}% 100%)`;
     }
   }
 
+  /* Mouse */
   document.addEventListener('mousemove', (e) => updateVisuals(e.clientX));
+
+  /* Touch — passive for performance, no preventDefault needed */
   document.addEventListener('touchmove', (e) => {
     const touch = e.touches[0];
     if (touch) updateVisuals(touch.clientX);
+  }, { passive: true });
+
+  /* Touch start — also trigger on tap */
+  document.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    if (touch) updateVisuals(touch.clientX);
+  }, { passive: true });
+
+  /* Reset slider to center if user leaves the page/window */
+  document.addEventListener('mouseleave', () => {
+    if (!prefersReducedMotion) {
+      // Optionally animate back to 50% on mouse leave
+      // updateVisuals(window.innerWidth / 2);
+    }
   });
 
-  /* ─── DOWNLOAD & PLATFORM SELECTION ─── */
-  
-  // No secondary logic needed for direct download links.
+
+  /* ─── RESIZE HANDLER (debounced for performance) ─── */
+
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      // Re-trigger with current slider position to fix layout jumps
+      // (no action needed — CSS clamp handles everything)
+    }, 150);
+  }, { passive: true });
+
 });
