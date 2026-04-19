@@ -243,6 +243,21 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
+  /* ─── SCROLL HANDLER (HEADER GLASS EFFECT) ─── */
+  const siteHeader = document.querySelector('.site-header');
+  
+  function handleScroll() {
+    if (window.scrollY > 10) {
+      siteHeader.classList.add('scrolled');
+    } else {
+      siteHeader.classList.remove('scrolled');
+    }
+  }
+
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  handleScroll(); // Initial check
+
+
   /* ─── RESIZE HANDLER (debounced for performance) ─── */
 
   let resizeTimer;
