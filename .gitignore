@@ -1,0 +1,19 @@
+# Build artifacts
+setup.exe
+otocolor.exe
+installer-output/
+dist/
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Sub-project specific ignores
+develop-chromaflow-colorization-software/node_modules/
+develop-chromaflow-colorization-software/dist/
+develop-chromaflow-colorization-software/installer-output/
